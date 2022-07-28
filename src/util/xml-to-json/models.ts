@@ -1,10 +1,10 @@
 export interface SingleItemI {
-  id: string;
+  id?: string;
   title: string;
   description: string;
   link: string;
   author: string;
-  published: number;
+  published: string;
   created: number;
   category: string[];
   content: string;

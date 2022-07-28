@@ -7,7 +7,7 @@
 <script lang="ts">
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
 import { defineComponent } from 'vue';
-import { parse } from 'rss-to-json';
+import {XMLParsetoJSONService} from './util/xml-to-json';
 export default defineComponent({
   name: 'App',
   components: {
@@ -15,14 +15,19 @@ export default defineComponent({
     IonRouterOutlet
   },
   setup() {
+    const xmlParser = new XMLParsetoJSONService();
 
 
-    const asynctest =  () => {
+    const asynctest = async () => {
 
-      const response =  parse('http://blog.teamtreehouse.com/feed');
-      console.log('MJ response', response);
-      console.log('MJ json', JSON.stringify(response, null, 3));
+// https://blog.teamtreehouse.com/feed
 
+      const url = 'https://ionicframework.com/blog/feed/';
+      const response = (await xmlParser.getJson(url));
+      xmlParser.getJson(url).then(function(response) {
+        console.log(response);
+      });
+      console.error('MJ component', response);
       return response;
     }
     asynctest();
