@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
-import TabsPage from '../views/TabsPage.vue'
-
+import TabsPage from '@/views/TabsPage.vue'
+import {FeedStore} from '@/store'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -27,7 +27,13 @@ const routes: Array<RouteRecordRaw> = [
         path: 'tab3',
         component: () => import('@/views/Tab3Page.vue')
       }
-    ]
+    ],
+    beforeEnter: (to, from, next) => {
+      console.log('beforeEnter');
+      const _useFeedStore = FeedStore();
+      _useFeedStore.fetchAvailableRSSFeeds();
+      next();
+    }
   }
 ]
 

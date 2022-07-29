@@ -9,7 +9,8 @@ export interface SingleItemI {
   category: string[];
   content: string;
   enclosures: string[];
-  [key: string]: string |  string[] | undefined
+  media?: {};
+  [key: string]: string |  string[] | {} | undefined
 }
 
 export interface RSSFeedI {
@@ -20,4 +21,9 @@ export interface RSSFeedI {
   category: string [];
   items: SingleItemI[];
   [key: string]: string | SingleItemI[] | string[] | undefined
+}
+
+export interface Option {
+  name: string;
+  url: string;
 }
