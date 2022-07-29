@@ -1,22 +1,12 @@
 import { XMLParser } from 'fast-xml-parser';
 import { RSSFeedI, SingleItemI } from './models';
+import { mediaPossibleKeyItems} from './constants';
 
 export class XMLParsetoJSONService {
 
 	public getJson = async (endpoint: string) : Promise<RSSFeedI> => {
 		try {
-			const mediaItems: string[] = [
-				'content:encoded',
-				'podcast:transcript',
-				'itunes:summary',
-				'itunes:author',
-				'itunes:explicit',
-				'itunes:duration',
-				'itunes:season',
-				'itunes:episode',
-				'itunes:episodeType',
-				'itunes:image',
-			];
+
 return  fetch(endpoint).then((res) => {
         res.text().then((data) => {
           const xml = new XMLParser({
@@ -24,22 +14,30 @@ return  fetch(endpoint).then((res) => {
             textNodeName: '$text',
             ignoreAttributes: false,
           });
+
+
           const result = xml.parse(data);
 
           let RSSContent =
             result.rss && result.rss.channel ? result.rss.channel : result.feed;
+          
           if (Array.isArray(RSSContent)) RSSContent = RSSContent[0];
+
+          /** Get RSS link */
+          let RSSLink = '';
+          if(RSSContent.link?.href) RSSLink = RSSContent.link.href;
+          if (RSSContent.link) RSSLink = RSSContent.link;
+          /** Get RSS Image */
+          let RSSImage = '';
+          if (RSSContent.image && RSSContent.image?.url) RSSImage = RSSContent.image.url;
+          else if(RSSContent['itunes:image']) RSSImage = RSSContent['itunes:image'];
+
 
           const rss: RSSFeedI = {
             title: RSSContent?.title ?? '',
-            description: RSSContent.description ?? '',
-            link:
-              RSSContent.link && RSSContent.link.href ? RSSContent.link.href : RSSContent.link,
-            image: RSSContent.image
-              ? RSSContent.image.url
-              : RSSContent['itunes:image']
-                ? RSSContent['itunes:image'].href
-                : '',
+            description: RSSContent?.description ?? '',
+            link:RSSLink  ,
+            image: RSSImage,
             category: RSSContent.category || [],
             items:RSSContent.items || [],
           };
@@ -58,6 +56,16 @@ return  fetch(endpoint).then((res) => {
             else if ( currentValue['post-id']?.$text) itemId =  currentValue['post-id'].$text;
             else if (currentValue?.id) itemId = currentValue?.id;
 
+            /** Search for Item Title */
+            let itemTitle = '';
+            if (currentValue?.title?.$text) itemTitle = currentValue?.title.$text;
+            else if (currentValue?.title) itemTitle = currentValue?.title;
+            
+            /** Search for item description */
+            let itemDescription = '';
+            if (currentValue?.description?.$text) itemDescription = currentValue?.description.$text;
+            else if(currentValue?.summary?.$text) itemDescription = currentValue?.summary.$text;
+
             /** Search for content  */
             let content = '';
             if (currentValue?.content?.$t) content = currentValue?.content?.$t;
@@ -66,6 +74,14 @@ return  fetch(endpoint).then((res) => {
             else if (currentValue?.description?.$cdata) content = currentValue?.description.$cdata;
             else if (currentValue['content:encoded']) content = currentValue['content:encoded'];
 
+            let itemLink = '';
+            if (currentValue?.link?.$href) itemLink = currentValue?.link.$href;
+            else if (currentValue?.link) itemLink = currentValue?.link;
+
+
+
+
+              
             /** Search for Publish date */
             let published = '';
             if (currentValue?.created) published = currentValue?.created;
@@ -73,35 +89,36 @@ return  fetch(endpoint).then((res) => {
             else if (currentValue?.published) published = currentValue?.published;
             else if (currentValue?.updated) published = currentValue?.updated;
 
+            /** Search for author */
+            let itemAuthor = '';
+            if (currentValue?.author?.$name) itemAuthor = currentValue?.author.$name;
+            else if (currentValue?.author) itemAuthor = currentValue?.author.name;
+            else if( currentValue['dc:creator']) itemAuthor = currentValue['dc:creator'];
+
+            /** Search for date created */
+            let itemCreated = '';
+            if (currentValue?.updated) itemCreated = currentValue?.updated;
+            else if (currentValue?.pubDate) itemCreated = currentValue?.pubDate;
+            else if (currentValue?.created) itemCreated = currentValue?.created;
+            /** Search for enclosures */
+            let enclosures = [];
+            if (currentValue?.enclosure) enclosures = currentValue?.enclosure;
+            else if (Array.isArray(currentValue?.enclosure)) enclosures = [currentValue?.enclosure];
 
             const obj: SingleItemI = {
               id: itemId,
-              title: currentValue?.title && currentValue?.title.$text ? currentValue?.title.$text : currentValue?.title,
-              description:
-                currentValue?.summary && currentValue?.summary.$text
-                  ? currentValue?.summary.$text
-                  : currentValue?.description,
-              link: currentValue?.link && currentValue?.link.href ? currentValue?.link.href : currentValue?.link,
-              author:
-                currentValue?.author && currentValue?.author.name ? currentValue?.author.name : currentValue['dc:creator'],
+              title: itemTitle,
+              description: itemDescription,
+              link: itemLink,
+              author: itemAuthor,
               published: published, 
-              created: currentValue?.updated
-                ? Date.parse(currentValue?.updated)
-                : currentValue?.pubDate
-                  ? Date.parse(currentValue?.pubDate)
-                  : currentValue?.created
-                    ? Date.parse(currentValue?.created)
-                    : Date.now(),
+              created: itemCreated ,
               category: currentValue?.category || [],
               content:content,
-              enclosures: currentValue?.enclosure
-                ? Array.isArray(currentValue?.enclosure)
-                  ? currentValue?.enclosure
-                  : [currentValue?.enclosure]
-                : [],
+              enclosures: enclosures,
             };
   
-            mediaItems.forEach((s) => {
+            mediaPossibleKeyItems?.forEach((s) => {
               if (currentValue[s]) obj[s.replace(':', '_')] = currentValue[s];
             });
   
@@ -127,10 +144,12 @@ return  fetch(endpoint).then((res) => {
             }
   
             Object.assign(obj, { media });
-  
-            rss.items.push(obj);
-            console.warn(rss);
+
+            rss.items = [...rss.items, obj];
+            Array.isArray((obj.category))  ? rss.category.push(...obj.category) : rss.category.push(obj.category);
           }
+          // * Remove string duplicates from array
+          rss.category = [...new Set(rss?.category)];
           return rss;
         });
       }).catch((err) => {

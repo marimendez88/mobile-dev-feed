@@ -5,11 +5,11 @@ export interface SingleItemI {
   link: string;
   author: string;
   published: string;
-  created: number;
+  created: string;
   category: string[];
   content: string;
   enclosures: string[];
-  [key: string]: string | number| string[] | undefined
+  [key: string]: string |  string[] | undefined
 }
 
 export interface RSSFeedI {
@@ -17,7 +17,7 @@ export interface RSSFeedI {
   description: string;
   link: string;
   image: string;
-  category: string;
+  category: string [];
   items: SingleItemI[];
-  [key: string]: string | SingleItemI[] | undefined
+  [key: string]: string | SingleItemI[] | string[] | undefined
 }
